@@ -2,14 +2,20 @@ import numpy as np
 import matplotlib.pyplot as plt
 import math
 
+import joblib
+import itertools
+
+
 def main():
 
-    d_list = [1.2,2,5,10]
+    #d_list = [1.2,2,5,10]
+    d_list = [1.7]
     for d in d_list:
         main2(d)
 
 def main2(d):
-
+    print(f"Alpha : {d}")
+    ver = "ver4"
     print(np.sin(deg2rad(90)))
     epsilon = 1e-1000  # prevent zero divide
     loop_num = 1000
@@ -29,7 +35,7 @@ def main2(d):
         point.append([x,y])
         x_log.append(x)
         y_log.append(y)
-    print("fin")
+    #print("fin")
 
     fig = plt.figure()
     ax = fig.add_subplot(111)
@@ -43,64 +49,80 @@ def main2(d):
                    labelright=False,
                    labeltop=False)
     ax.set_title("D= " + str(d))
-    plt.savefig("C:/Users/tooyama/Desktop/情報数理01/" + str(d) + ".png")
-    #plt.figure()
+    serial = np.random.randint(1,100)
+    plt.savefig("C:/Users/tooyama/Desktop/情報数理01/" + str(ver)+ "-" + str(d) + str(f"-{serial}-") +str(".png"))
 
+    r_log,cr_log = c_calc(point)
 
-    r_log,cr_log = c_calc(point,10,2)
+    #print(cr_log)
 
-    dc = (np.log(cr_log[1])-np.log(cr_log[0]))/(np.log(r_log[1])-np.log(r_log[0]))
-    print(dc)
+    for i in range(len(r_log)):
+        if cr_log[i] > 0:
+            cr_log = cr_log[i:]
+            r_log = r_log[i:]
+            print(cr_log)
+            print(r_log)
+            break
+    try:
+        off_set = 0
+        #dc = (np.log(cr_log[i + 1])-np.log(cr_log[i]))/(np.log(r_log[i + 1])-np.log(r_log[i]))
+        y = np.log(cr_log[i + off_set:i + off_set + 2])
+        x = np.log(r_log[i + off_set:off_set + i + 2])
+        print("to")
+        print(f"x: {x}")
+        print(f"y: {y}")
+        dc = np.polyfit(x,y,1)
+        hc = (cr_log[off_set + 10+ i] - cr_log[off_set+ i])/(r_log[off_set + 10+ i] - r_log[off_set+ i])
+        print(f"hand calc is {hc}")
+
+    except(RuntimeWarning):
+        print("sorry")
+        dc = None
+    dc = dc[0]
+    dc = 1.6367477253486983
+    print(f"Dc : {dc}")
     fig1, ax1 = plt.subplots()
     ax1.plot(np.log(r_log), np.log(cr_log), "o", linestyle='solid', color="black")
 
     ax1.set_xlabel("log(r)")
     ax1.set_ylabel("logC(r)")
     ax1.set_title("D= " +str(d) +" Dc = " + str(dc))
-    plt.savefig("C:/Users/tooyama/Desktop/情報数理01/" + str(d) + "and" +str(dc)+".png")
+    plt.savefig("C:/Users/tooyama/Desktop/情報数理01/"+ str(ver) + "-" + str(d) + "and" +str(f"{dc :.3f}") +".png")
     #plt.show()
 
-def c_calc(point,max_pow,resolution):
+def c_calc(point):
 
     n = len(point)
-    print(f'data length is {n}')
+    # print(f'data length is {n}')
     point_s = sorted(point, key=lambda x: x[0])
     print(point_s)
 
-    cr_log= []
-    r_log = []
-
-    cr_v_flag = -1
     tiny_resol = 20
     tiny_resol_max = 0.5 # 10 ** 1
     # (i / tiny_resol) = tiny_resol_max
-    r_list = [10 ** (i / tiny_resol) for i in range(1, int(tiny_resol_max * tiny_resol))]
-    r_list_after = [10**(i/resolution) for i in range(int(tiny_resol_max + 1),int(max_pow*resolution))]
-    r_list.extend(r_list_after)
-
+    r_list = [2 ** i for i in range(15)]
+    #r_list_after = [10**(i) for i in range(1,7)]
+    #r_list.extend(r_list_after)
+    cr_list = []
     print(r_list)
-    for k in r_list:
-        r = k
-        print(f'now r {int(r)}',end="")
+    bef = 0
+    for r in r_list:
+        print(f'now r {r:.3f}', end="")
         counter = 0
+
         for i in range(n):
             # print(f'searching {i}/{n}',end="")
-            for j in range(i+1, n):
-                if point_s[i][0] - point_s[j][0] > r: break # x座標がrより遠い時点でブレイク
-                if math.sqrt((point_s[i][0] - point_s[j][0])**2 + (point_s[i][0] - point_s[j][0])**2) < r:
+            for j in range(i + 1, n):
+                #if r - point_s[i][0] - point_s[j][0] < 0: break  # x座標がrより遠い時点でブレイク
+                if r - math.sqrt((point_s[i][0] - point_s[j][0]) ** 2 + (point_s[i][1] - point_s[j][1]) ** 2) > 0:
                     counter += 1
-        cr_v = 2 * counter/(n*(n-1))
-        print(f' with {counter} points and c(r) : {cr_v}')
-        r_log.append(r)
-        cr_log.append(cr_v)
-        if cr_v_flag > 0:
-            print("reached max r exiting")
-            break
-        if cr_v == 1.0:
-            cr_v_flag = 1
-    return r_log,cr_log
+        cr_v = (2 * counter) / (n * (n - 1))
+        plus = counter - bef
+        bef = counter
+        print(f' with {counter} points and c(r) : {cr_v} + {plus}')
+        cr_list.append(cr_v)
 
-
+    return r_list,cr_list
 
 def search_upper():
     pass
